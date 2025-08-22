@@ -10,15 +10,40 @@ const interval = setInterval(function () {
         e.stopPropagation();
         e.preventDefault();
 
-        const coords = kmtBoot.getProps().page.linksEmbedded.tour.linksEmbedded.coordinates.attributes.items;
+        const scripts = document.querySelectorAll('script');
+        let rawJsonString = null;
 
-        if (!coords) {
+        for (let script of scripts) {
+            const content = script.textContent || script.innerHTML;
+            if (content.includes('kmtBoot.setProps(')) {
+                // Extract the JSON string between the quotes
+                const match = content.match(/kmtBoot\.setProps\("(.+)"\)/);
+                if (match) {
+                    rawJsonString = match[1];
+                    break;
+                }
+            }
+        }
+
+        if (rawJsonString) {
+          console.log('rawJsonString: ', rawJsonString)
+            // Unescape the JSON string (it's likely escaped for JavaScript)
+            const unescapedJson = rawJsonString.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+            
+            // Parse the raw JSON
+            const rawData = JSON.parse(unescapedJson);
+            console.log('💽 Raw data:', rawData);
+            
+            // Now access coordinates the way they appear in the raw JSON
+            const coordinates = rawData.page._embedded.tour._embedded.coordinates.items;
+            console.log('🗺️ Coordinates:', coordinates);
+
+            const gpx = jsonToGpx(coordinates);
+            downloadGpx(`route.gpx`, gpx);
+        } else {
             alert('There was an error reading the points of your route. If this keeps happening feel free to open an issue.');
             return;
         }
-
-        const gpx = jsonToGpx(coords);
-        downloadGpx(`route.gpx`, gpx);
     })
 }, 1000);
 
